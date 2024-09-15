@@ -1,8 +1,21 @@
 <template>
   <div class="px-5 py-10">
+    <div class="flex justify-end w-full pb-2">
+      <button
+        class="px-4 py-1.5 bg-yellow-500 text-white-1 rounded inline-flex self-end text-sm"
+        @click="() => (isAddData = true)"
+      >
+        Add Data
+      </button>
+      <AddData
+        v-if="isAddData"
+        @submit-data="handleData"
+        @close="() => (isAddData = false)"
+      />
+    </div>
     <form
       @submit="handleSearch"
-      class="flex bg-[#fafafa] h-10 border border-purple-800/60 rounded-md overflow-clip"
+      class="flex bg-[#fafafa] h-10 border border-purple-800/60 rounded-md overflow-clip w-full"
     >
       <input
         type="text"
@@ -43,7 +56,9 @@
               size="24"
               class="-z-10"
             />
-            <nuxt-link :to="`/games/detail/${val.id}`"> Detail </nuxt-link>
+            <nuxt-link :to="`/games/detail/${val.id}/${val.source}`">
+              Detail
+            </nuxt-link>
           </div>
         </div>
       </div>
@@ -67,8 +82,13 @@
 </template>
 
 <script setup lang="ts">
+import { useDataStore } from "@/stores/data";
+const store = useDataStore();
+
+const tempData = ref([]);
 const filterData = ref([]);
 const isLoading = ref(true);
+const isAddData = ref(false);
 let currentPage = ref<number>(1);
 const search = reactive({
   data: "",
@@ -78,8 +98,12 @@ const data: any = await $fetch("/api/games");
 
 const pagesize = 4;
 
-onMounted(() => {
-  filterData.value = data.slice(0, pagesize);
+onMounted(async () => {
+  tempData.value = await data.map((val: any) => {
+    return { ...val, source: "api" };
+  });
+
+  filterData.value = await tempData.value.slice(0, pagesize);
   isLoading.value = false;
 });
 
@@ -104,10 +128,9 @@ const handleSearch = (e: any) => {
   isLoading.value = true;
   filterData.value = [];
   if (e.target[0].value === "") {
-    filterData.value = data;
+    filterData.value = tempData.value;
   } else {
-    filterData.value = data.filter((val: any) => {
-      console.log(e.target[0].value.toLowerCase());
+    filterData.value = tempData.value.filter((val: any) => {
       return val.title.toLowerCase().includes(e.target[0].value.toLowerCase());
     });
   }
@@ -118,7 +141,7 @@ const handleSearch = (e: any) => {
 watch([() => currentPage.value, () => pagesize], () => {
   isLoading.value = true;
   filterData.value = [];
-  filterData.value = data.slice(
+  filterData.value = tempData.value.slice(
     (currentPage.value - 1) * pagesize,
     currentPage.value * pagesize
   );
@@ -127,6 +150,17 @@ watch([() => currentPage.value, () => pagesize], () => {
 });
 
 const pageCount = Math.ceil(data.length / pagesize);
+
+const handleData = async () => {
+  const dataPinia = await store.getData;
+  const dataChanged = {
+    ...dataPinia,
+    thumbnail: URL.createObjectURL(dataPinia.thumbnail),
+  };
+  await tempData.value.push(dataChanged);
+  filterData.value = await tempData.value.slice(0, pagesize);
+  isAddData.value = false;
+};
 
 definePageMeta({
   layout: "main",
