@@ -76,7 +76,7 @@ const search = reactive({
 
 const data: any = await $fetch("/api/games");
 
-const pagesize = 8;
+const pagesize = 4;
 
 onMounted(() => {
   filterData.value = data.slice(0, pagesize);
